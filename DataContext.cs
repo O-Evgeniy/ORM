@@ -79,6 +79,8 @@ namespace ORM
         
         public Book Find(string id)
         {
+
+            Console.WriteLine("FIND BOOK ID:" + id);
             if (_updCache.ItemContains(id))
             {
                 return _updCache.GetItem(id);
@@ -86,6 +88,9 @@ namespace ORM
             else
             {
                 string answer = dbEngine.Execute($"get Id={id};");
+                Console.WriteLine("FIND ANSWER:" + answer);
+                answer = DeleteScreening(answer);
+                Console.WriteLine("FIND ANSWER after deleteSCreen:"+ answer);
                 if (answer == ";")
                     return null;
                 else
@@ -99,6 +104,7 @@ namespace ORM
 
         public Book Read(string id)
         {
+            
             if (_updCache.ItemContains(id))
             {
                 return _updCache.GetItem(id);
@@ -113,6 +119,8 @@ namespace ORM
                 }
                 else
                 {
+                    answ = DeleteScreening(answ);
+                    //Console.WriteLine(answ);
                     Book book = ParseString(answ);
                     _updCache.CreateItem(book);
                     return book;
@@ -122,27 +130,33 @@ namespace ORM
 
         public void Insert(Book entity)
         {
+           // Console.WriteLine("Insert BOOK:" + entity.Id);
             if (entity is null)
                 throw new Exception();
             else
+            {
+                Console.WriteLine("Insert BOOK: " + $"Id={entity.Id},Title={entity.Title},Price={entity.Price.ToString()},Weight={entity.Weight.ToString()},Author={entity.Author},Skill={entity.Skill};");
                 _insCache.CreateItem(entity);
+            }
         }
 
         public void SubmitChanges()
         {
+            //Console.WriteLine("SUbmitCHange REQ");
             string req = "";
             foreach (var book in _insCache.GetItems().Values)
             {
-                req += CollectStringAdd(book);
-                
-                
+                //req += CollectStringAdd(book);
+                req += CollectStringAdd(AddScreening(book));
+
+
             }
             foreach (var book in _updCache.GetItems().Values)
             {
-                req += CollectStringUpd(book);
+                req += CollectStringUpd(AddScreening(book));
             }
              string answ = dbEngine.Execute(req);
-
+            Console.WriteLine("SubmitChange REQ: " + req);
            
         
 
@@ -164,16 +178,18 @@ namespace ORM
 
         public void testmethod()
         {
-            string str = @"add Id=2;upd Id=2,F1=\=\;\,;get Id=2;";
+            string str = @"add Id=000243DE,Author=Marobar Sul,Price=35,Skill=Athletics,Title=The Ransom of Zarek,Weight=1;";
+            string answe = dbEngine.Execute(str);
+            str = @"get Id=000243DE;";
             string ssssss = dbEngine.Execute(str);
-            string s = ssssss.Replace("\\\\","\\");
-            string ssss = dbEngine.Execute("get Id=2;");
-            Console.WriteLine(ssssss + "\t" + s);
-            string strIN = str.Replace("\\\\", "\\");
+            //Book book = ParseString(ssssss);
+            string answ = DeleteScreening(ssssss);
+            Book book = ParseString(answ);
+            Insert(book);
             //char[] chars = str.ToCharArray();
             //for(int i=0;i<chars.Length;i++)
             //{
-            //    if (chars[i].Equals(";") && chars[i+1].Equals(";"))
+            //    if (chars[i].Equals("; ") && chars[i+1].Equals(";"))
             //    {
             //        str = str.tr
             //    }
@@ -181,10 +197,7 @@ namespace ORM
         }
         public string CollectStringAdd(Book book)
         {
-            string str = "add Id=000243EC\\,Title=The Warp; in, the West,Price=25,Weight=1,Author=Ulvius Tero,Skill=Block;";
-            str = str.Replace(@"\", @"\\");
-            str = str.Replace(@";", @"\;");
-            str = str.Replace(@",", @"\,");
+            
             return $"add Id={book.Id},Title={book.Title},Price={book.Price.ToString()},Weight={book.Weight.ToString()},Author={book.Author},Skill={book.Skill};";
         }
         public string CollectStringUpd(Book book)
@@ -199,10 +212,19 @@ namespace ORM
 
         public Book ParseString(string answ)
         {
-            
+            var result = Regex.Matches(answ, @"(?<key>\w*)\,(?<value>\w*)")
+              .OfType<Match>()
+              .ToDictionary(match => match.Groups["key"], match => match.Groups["value"]);
+
             answ = answ.Trim(';');
             string[] pairs = answ.Split(',');
-            Dictionary<string, string> dict = pairs.Select(s => s.Split('=')).ToDictionary(arr => arr[0], arr => arr[1]);
+            Dictionary<string, string> dict = pairs.Select(s => s.Split('=')).ToDictionary(arr => arr[0].Replace("%", "\\").Replace("\\&", "=").Replace("\\-", ","), arr => arr[1].Replace("%", "\\").Replace("\\&", "=").Replace("\\-", ","));
+            string str="" ;
+            foreach(var i in dict)
+            {
+                str += $"{i.Key}={i.Value},";
+            }
+            Console.WriteLine(str);
 
             Book book = new Book();
             
@@ -218,10 +240,38 @@ namespace ORM
                 book.Author = dict["Author"];
             if (dict.ContainsKey("Skill"))
                 book.Skill = dict["Skill"];
-
-
-
             return book;
+        }
+
+        public string DeleteScreening(string answ)
+        {
+            string answWithoutScreening;
+            answ = answ.Replace("\\;",";");
+            answ = answ.Replace("\\\\", "%");
+            answ = answ.Replace("\\,", "\\-");
+            answ = answ.Replace(@"\", "\\");
+            answWithoutScreening = answ.Replace("\\=", "\\&");
+
+            return answWithoutScreening;
+        }
+
+        public Book AddScreening(Book book)
+        {
+            Console.WriteLine(book.Author);
+            Book tempBook = new Book();
+            tempBook.Id = book.Id.Replace(";", "\\;").Replace(",", "\\,").Replace("=", "\\=").Replace(@"\\", "\\").Replace("\\=","\\\\=");
+            tempBook.Price=Convert.ToInt32(book.Price.ToString().Replace(";", "\\;").Replace(",", "\\,").Replace("=", "\\=").Replace(@"\\", "\\").Replace("\\=", "\\\\="));
+            tempBook.Skill=book.Skill.Replace(";", "\\;").Replace(",", "\\,").Replace("=", "\\=").Replace(@"\\", "\\").Replace("\\=", "\\\\=");
+            tempBook.Title = book.Title.Replace("\\=", @"\\\\=").Replace("=", "\\=").Replace("\\;", @"\\\\;").Replace("\\,", @"\\\\,").Replace(";", "\\;").Replace(",", "\\,").Replace(@"\\", "\\");
+            tempBook.Weight= Convert.ToDecimal(book.Weight.ToString().Replace(";", "\\;").Replace(",", "\\,").Replace("=", "\\=").Replace(@"\\", "\\").Replace("\\=", "\\\\="));
+            tempBook.Author = book.Author.Replace("\\", @"\\").Replace("\\=", @"\\\\=").Replace(";", "\\;").Replace(",", "\\,");
+            return tempBook;
+            //Replace("\\=", "\\\\=").Replace("\\;", "\\\\;").Replace("\\,", "\\\\,")
+            //book.Title.Replace("=", "\\=")
+            //.Replace(";", "\\;").Replace(",", "\\,").Replace(@"\\", "\\")
+
+
+            //.Replace("=", "\\=").Replace("\\;", @"\\;")
         }
     }
 }
