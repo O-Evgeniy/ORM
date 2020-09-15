@@ -140,6 +140,7 @@ namespace ORM
 
         public void Insert(Book entity)
         {
+            
            // Console.WriteLine("Insert BOOK:" + entity.Id);
             if (entity is null)
                 throw new Exception();
@@ -266,20 +267,20 @@ namespace ORM
             //Book oldbook = _insCache.GetItem(book.Id);
             string query = $"upd Id={book.Id},";
             //Book oldbook = ParseString(DeleteScreening(dbEngine.Execute($"get Id={book.Id};")));
-            if(oldbook.Title!=book.Title && book.Title!=null)
+            if(book.Title!="" && book.Title!=null)
                 query += $"Title={book.Title},";
             
-            if (oldbook.Price != book.Price && book.Price != 0)
+            if (book.Price != 0 && book.Price != 0)
                 query += $"Price={book.Price},";
 
-            if (oldbook.Skill != book.Skill && book.Skill != null)
+            if (book.Skill != "" && book.Skill != null)
                 query += $"Skill={book.Skill},";
 
-            if (oldbook.Weight != book.Weight && book.Weight != 0)
+            if (book.Weight != 0 && book.Weight != 0)
                 query += $"Weight={book.Weight},";
 
-            if (oldbook.Author != book.Author && book.Author != null)
-                query += $"Price={book.Author},";
+            if (book.Author !="" && book.Author != null)
+                query += $"Author={book.Author},";
             return query.Trim(',') + ";";
             //return $"upd Id={book.Id},Title={book.Title},Price={book.Price.ToString()},Weight={book.Weight.ToString()},Author={book.Author},Skill={book.Skill};";
         }
