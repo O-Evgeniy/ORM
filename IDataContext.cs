@@ -4,9 +4,9 @@ namespace ORM
 {
     public interface IDataContext
     {
-        Book Find(string id);
-        Book Read(string id);
-        void Insert(Book entity);
+        T Find<T>(string id) where T : DbEntity;
+        T Read<T>(string id) where T : DbEntity;
+        void Insert<T>(T entity) where T : DbEntity;
         void SubmitChanges();
     }
 }
